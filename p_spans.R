@@ -1,4 +1,5 @@
 
+
 find.sig.sigletons <- function(){
 }
 
@@ -97,37 +98,64 @@ t.test.list2table <- function(tList){
 	m
 }
 
-my.dmp.finder <- function(GenomicMethylSet, group.pos, group.neg, rm.na = TRUE, offset = 100){
-    require(qvalue)
+my.dmp.finder <- function(GenomicMethylSet, betas = NULL,
+                          group.pos, group.neg,
+                          rm.na = TRUE, offset = 100) {
+  require(qvalue)
+  if (is.null(betas)) { 
     betas <- getBeta(GenomicMethylSet, offset = offset)
     if (rm.na) {
         betas <- na.omit(betas)
     }
-    anno <- getAnnotation(GenomicMethylSet)[rownames(betas),]
-    locs <- granges(GenomicMethylSet)[rownames(betas)]
-    mcols(locs) <- anno[, c(4, 1:2)]
-    locs$str <- anno$strand
-    locs$dist.to.next <- distance(locs, c(locs[-1], locs[1]))
-    locs$dist.to.prev <- distance(locs, c(locs[length(locs)], locs[-length(locs)]))
-    locs$singleton <- (locs$dist.to.next > 500 | is.na(locs$dist.to.next)) & (locs$dist.to.prev > 500 | is.na(locs$dist.to.prev))
-    mcols(locs) <- cbind(mcols(locs), anno[,c(19,18,24,26,25,32)])
-    t.list <- lapply(1:nrow(betas), function(r) {
-                                                 my.t <- t.test(x = betas[r,group.neg], y = betas[r,group.pos], alternative = "two.sided", mu = 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
-                                                 means <- unname(my.t$estimate)
-                                                 c(group.pos.mean=means[2], group.neg.means=means[1],
-                                                 abs.mean.diff=abs(means[2]-means[1]),
-                                                 mean.diff=means[2]-means[1],
-                                                 p.value=my.t$p.value)
-                                                })
-    t.df<- as.data.frame(do.call("rbind", t.list))
-    t.df$q.value <- qvalue(t.df[,"p.value"])$qvalues
-    mcols(locs) <- cbind(mcols(locs), t.df)
-    locs
+  }
+  anno <- getAnnotation(GenomicMethylSet)[rownames(betas),]
+  locs <- granges(GenomicMethylSet)[rownames(betas)]
+  #mcols(locs) <- anno[, c(4, 1:2)]
+  mcols(locs) <- anno[, c(4, 1:2, 5:ncol(anno))]
+  locs$str <- anno$strand
+  locs$dist.to.next <- distance(locs, c(locs[-1], locs[1]))
+  locs$dist.to.prev <- distance(
+                         locs,
+                         c(locs[length(locs)], locs[-length(locs)])
+                       )
+  locs$singleton <- (locs$dist.to.next > 500 | is.na(locs$dist.to.next)) &
+                    (locs$dist.to.prev > 500 | is.na(locs$dist.to.prev))
+  #mcols(locs) <- cbind(mcols(locs), anno[,c(19,18,24,26,25,32)])
+  t.list <- lapply(1:nrow(betas), function(r) {
+                                    my.t <- t.test(
+                                              x = betas[r,group.neg],
+                                              y = betas[r,group.pos],
+                                              alternative = "two.sided",
+                                              mu = 0,
+                                              paired = FALSE,
+                                              var.equal = FALSE,
+                                              conf.level = 0.95
+                                            )
+                                    means <- unname(my.t$estimate)
+                                    c(
+                                      group.pos.mean=means[2],
+                                      group.neg.means=means[1],
+                                      abs.mean.diff=abs(means[2]-means[1]),
+                                      mean.diff=means[2]-means[1],
+                                      p.value=my.t$p.value
+                                    )
+                                    })
+  t.df<- as.data.frame(do.call("rbind", t.list))
+  t.df$q.value <- qvalue(t.df[,"p.value"])$qvalues
+  mcols(locs) <- cbind(mcols(locs), t.df)
+  locs
 }
 
 
-my.dmr.finder <- function(dmp.table, use.value.dmr=c("p", "q"), p.q.thresh.dmr=0.01, mean.diff.thresh.dmr=0.3, span=3, promote.singles=TRUE,
-                          find.singletons=TRUE, use.value.sing=NULL, p.q.thresh.sing=NULL, mean.diff.thresh.sing=NULL, merge.tables=FALSE) {
+my.dmr.finder <- function(dmp.table,
+                          use.value.dmr=c("p", "q"),
+                          p.q.thresh.dmr=0.01,
+                          mean.diff.thresh.dmr=0.3,
+                          span=3,
+                          promote.singles=TRUE,
+                          find.singletons=TRUE,
+                          use.value.sing=NULL, p.q.thresh.sing=NULL,
+                          mean.diff.thresh.sing=NULL, merge.tables=FALSE) {
     require(GenomicRanges)
     use.value.dmr <- match.arg(use.value.dmr)
     if(is.null(use.value.sing)) use.value.sing <- use.value.dmr
