@@ -1,5 +1,4 @@
 
-
 find.sig.sigletons <- function(){
 }
 
@@ -98,20 +97,33 @@ t.test.list2table <- function(tList){
 	m
 }
 
-my.dmp.finder <- function(GenomicMethylSet, betas = NULL,
+my.dmp.finder <- function(betas, chip = c("450k", "EPIC"),
                           group.pos, group.neg,
                           rm.na = TRUE, offset = 100) {
   require(qvalue)
-  if (is.null(betas)) { 
-    betas <- getBeta(GenomicMethylSet, offset = offset)
-    if (rm.na) {
-        betas <- na.omit(betas)
-    }
+  chip <- match.arg(chip)
+  if (chip == "450k") {
+    print("Using 450k chip annotation")
+    data(IlluminaHumanMethylation450kanno.ilmn12.hg19)
+    anno <- IlluminaHumanMethylation450kanno.ilmn12.hg19
   }
-  anno <- getAnnotation(GenomicMethylSet)[rownames(betas),]
-  locs <- granges(GenomicMethylSet)[rownames(betas)]
+  if (chip == "EPIC") {
+    print("Using EPIC chip annotation")
+    data(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+    anno <- IlluminaHumanMethylationEPICanno.ilm10b2.hg19
+  } 
+  #if (is.null(betas)) { 
+  #  betas <- getBeta(GenomicMethylSet, offset = offset)
+  #  if (rm.na) {
+  #      betas <- na.omit(betas)
+  #  }
+  #}
+  #anno <- getAnnotation(GenomicMethylSet)[rownames(betas),]
+  #locs <- granges(GenomicMethylSet)[rownames(betas)]
   #mcols(locs) <- anno[, c(4, 1:2)]
-  mcols(locs) <- anno[, c(4, 1:2, 5:ncol(anno))]
+  locs <- getLocations(anno, mergeManifest = FALSE, orderByLocation = TRUE)    
+  #mcols(locs) <- anno[, c(4, 1:2, 5:ncol(anno))]
+  return(locs)
   locs$str <- anno$strand
   locs$dist.to.next <- distance(locs, c(locs[-1], locs[1]))
   locs$dist.to.prev <- distance(
@@ -158,12 +170,20 @@ my.dmr.finder <- function(dmp.table,
                           mean.diff.thresh.sing=NULL, merge.tables=FALSE) {
     require(GenomicRanges)
     use.value.dmr <- match.arg(use.value.dmr)
-    if(is.null(use.value.sing)) use.value.sing <- use.value.dmr
-    else use.value.sing <- match.arg(use.value.dmr)
-    if(is.null(p.q.thresh.sing)) p.q.thresh.sing <- p.q.thresh.dmr
-    if(is.null(mean.diff.thresh.sing)) mean.diff.thresh.sing <- mean.diff.thresh.dmr
-    if(!find.singletons) merge.tables <- FALSE
-    
+    if (is.null(use.value.sing)) {
+      use.value.sing <- use.value.dmr
+    } else {
+      use.value.sing <- match.arg(use.value.dmr)
+    }
+    if (is.null(p.q.thresh.sing)) {
+      p.q.thresh.sing <- p.q.thresh.dmr
+    }
+    if (is.null(mean.diff.thresh.sing)) {
+      mean.diff.thresh.sing <- mean.diff.thresh.dmr
+    }
+    if (!find.singletons) {
+      merge.tables <- FALSE
+    }
     #mcols.slice <- c(20:21,1:4,8:13,17:19,22:23)
     mcols.slice <- c(20:21,1:4,8:13,17:19,22:23,7)
     #dmp.glist <- split(dmp.table, factor(as.vector(seqnames(dmp.table))))
