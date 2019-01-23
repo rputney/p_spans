@@ -1,8 +1,7 @@
 
 
 my.dmp.finder <- function(betas, chip = c("450k", "EPIC"),
-                          group.pos, group.neg,
-                          rm.na = TRUE, offset = 100) {
+                          group.pos, group.neg) {
   require(minfi)
   require(IlluminaHumanMethylation450kanno.ilmn12.hg19)
   require(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
@@ -37,7 +36,6 @@ my.dmp.finder <- function(betas, chip = c("450k", "EPIC"),
                        )
   locs$singleton <- (locs$dist.to.next > 500 | is.na(locs$dist.to.next)) &
                     (locs$dist.to.prev > 500 | is.na(locs$dist.to.prev))
-  #betas <- betas[names(locs)[names(locs) %in% rownames(betas)], ]
   betas <- betas[names(locs), ]
   t.list <- lapply(1:nrow(betas), function(r) {
                                     my.t <- t.test(
