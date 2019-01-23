@@ -3,21 +3,33 @@
 my.dmp.finder <- function(betas, chip = c("450k", "EPIC"),
                           group.pos, group.neg,
                           rm.na = TRUE, offset = 100) {
+  require(minfi)
+  require(IlluminaHumanMethylation450kanno.ilmn12.hg19)
+  require(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
   require(qvalue)
+
   chip <- match.arg(chip)
   if (chip == "450k") {
     print("Using 450k chip annotation")
-    data(IlluminaHumanMethylation450kanno.ilmn12.hg19)
-    anno <- IlluminaHumanMethylation450kanno.ilmn12.hg19
+    data(
+      IlluminaHumanMethylation450kanno.ilmn12.hg19,
+      envir = environment()
+    )
+    object <- IlluminaHumanMethylation450kanno.ilmn12.hg19
+    anno <- getAnnotation(IlluminaHumanMethylation450kanno.ilmn12.hg19)
   }
   if (chip == "EPIC") {
     print("Using EPIC chip annotation")
-    data(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
-    anno <- IlluminaHumanMethylationEPICanno.ilm10b2.hg19
+    data(
+      IlluminaHumanMethylationEPICanno.ilm10b2.hg19,
+      envir = environment()
+    )
+    object <- IlluminaHumanMethylationEPICanno.ilm10b2.hg19
+    anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
   } 
-  locs <- getLocations(anno, mergeManifest=FALSE, orderByLocation=TRUE)    
-return(locs)
+  locs <- getLocations(object, mergeManifest = FALSE, orderByLocation = TRUE)
   locs$str <- anno$strand
+  locs <- locs[names(locs) %in% rownames(betas)]
   locs$dist.to.next <- distance(locs, c(locs[-1], locs[1]))
   locs$dist.to.prev <- distance(
                          locs,
@@ -25,7 +37,8 @@ return(locs)
                        )
   locs$singleton <- (locs$dist.to.next > 500 | is.na(locs$dist.to.next)) &
                     (locs$dist.to.prev > 500 | is.na(locs$dist.to.prev))
-  #mcols(locs) <- cbind(mcols(locs), anno[,c(19,18,24,26,25,32)])
+  #betas <- betas[names(locs)[names(locs) %in% rownames(betas)], ]
+  betas <- betas[names(locs), ]
   t.list <- lapply(1:nrow(betas), function(r) {
                                     my.t <- t.test(
                                               x = betas[r,group.neg],
