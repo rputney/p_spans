@@ -1,6 +1,6 @@
 
 
-my.dmp.finder <- function(betas, chip = c("450k", "EPIC"),
+dmp_finder <- function(betas, chip = c("450k", "EPIC"),
                           group.pos, group.neg) {
   require(minfi)
   require(IlluminaHumanMethylation450kanno.ilmn12.hg19)
